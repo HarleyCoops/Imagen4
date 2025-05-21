@@ -1,0 +1,22 @@
+We are going to construct an imagen4 access point using this model of code that google gave us: 
+
+from google import genai
+
+# TODO(developer): Update and un-comment below lines
+# project_id = "PROJECT_ID"
+client = genai.Client(vertexai=True, project=project_id, location="us-central1")
+
+prompt = """
+A white wall with two Art Deco travel posters mounted. First poster has the text: "NEPTUNE", tagline: "The jewel of the solar system!' Second poster has the text: "JUPITER", tagline: "Travel with the giants!
+"""
+
+image = client.models.generate_images(
+   model="imagen-4.0-generate-preview-05-20",
+   prompt=prompt,
+)
+
+# OPTIONAL: View the generated image in a notebook
+# image.generated_images[0].image.show()
+
+
+Want we want to do with this is to create in python a script that will handle promps from a terminal, pass the prompt to the imagen4 model, and return the image to the terminal. 
