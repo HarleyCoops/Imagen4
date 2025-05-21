@@ -23,17 +23,31 @@ A command-line interface for Google's Imagen 4 image generation model.
    cd Imagen4
    ```
 
-2. Install the required dependencies:
+2. Run the automated setup script:
+   ```
+   python setup.py
+   ```
+   
+   This script will:
+   - Install required dependencies
+   - Check and set up Google Cloud authentication
+   - Help you select a Google Cloud project
+   - Test your connection to the Imagen API
+   - Save your configuration for future use
+
+3. Alternatively, you can set up manually:
+
+   a. Install the required dependencies:
    ```
    pip install -r requirements.txt
    ```
 
-3. Set up Google Cloud authentication:
+   b. Set up Google Cloud authentication:
    ```
    gcloud auth application-default login
    ```
 
-4. Set your Google Cloud project ID:
+   c. Set your Google Cloud project ID:
    ```
    export GOOGLE_CLOUD_PROJECT="your-project-id"
    ```
@@ -79,7 +93,27 @@ Use a specific Google Cloud project:
 python imagen4_cli.py --project my-gcp-project-id
 ```
 
+## Troubleshooting
+
+If you encounter issues:
+
+1. **API Access**: Make sure you have access to the Imagen API. Visit [Google's Generative AI documentation](https://developers.generativeai.google/products/imagen) to request access.
+
+2. **Authentication**: Ensure you're properly authenticated with Google Cloud:
+   ```
+   gcloud auth application-default login
+   ```
+
+3. **Project Configuration**: Verify your project ID is correctly set:
+   ```
+   echo $GOOGLE_CLOUD_PROJECT
+   ```
+
+4. **Run Setup Again**: If you're still having issues, try running the setup script again:
+   ```
+   python setup.py
+   ```
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
