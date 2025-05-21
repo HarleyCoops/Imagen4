@@ -14,6 +14,12 @@ A command-line interface for Google's Imagen 4 image generation model.
 - Python 3.7+
 - Google Cloud account with Imagen 4 API access
 - Google Cloud authentication set up on your machine
+- Google Cloud SDK (install using PowerShell):
+  ```powershell
+  (New-Object Net.WebClient).DownloadFile("https://dl.google.com/dl/cloudsdk/channels/rapid/GoogleCloudSDKInstaller.exe", "$env:Temp\GoogleCloudSDKInstaller.exe")
+  & $env:Temp\GoogleCloudSDKInstaller.exe
+  ```
+  After installation, open a new terminal and run `gcloud init` to complete the setup.
 
 ## Installation
 

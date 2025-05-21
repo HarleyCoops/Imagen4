@@ -71,9 +71,50 @@ def check_gcloud_installation():
     """Check if gcloud CLI is installed."""
     print_step(3, 6, "Checking Google Cloud SDK installation")
     
-    success, output = run_command(["gcloud", "--version"])
+    gcloud_cmd = "gcloud"
+    success, output = run_command([gcloud_cmd, "--version"])
+    
+    if not success:
+        # Try with the known full path if the simple command fails
+        print("   Attempting to use known SDK path...")
+        # For Windows, gcloud is often a .cmd file.
+        # The path needs to be specific to your user and OS.
+        # $env:LOCALAPPDATA usually C:\Users\<username>\AppData\Local
+        # This path should be confirmed or made more robust if possible
+        # For this user, it's C:\Users\chris\AppData\Local\Google\Cloud SDK\google-cloud-sdk\bin\gcloud.cmd
+        # subprocess.run on Windows can often execute .cmd files directly when given the full path.
+        
+        # Let's construct the path dynamically if possible, or hardcode for now if sure
+        # For simplicity in this step, we'll use the known path for 'chris'
+        # A more robust solution would involve discovering this path or having user confirm/input
+        
+        # Determine the OS and construct the path
+        sdk_bin_path = ""
+        if platform.system() == "Windows":
+            local_app_data = os.getenv('LOCALAPPDATA')
+            if local_app_data:
+                sdk_bin_path = Path(local_app_data) / "Google" / "Cloud SDK" / "google-cloud-sdk" / "bin"
+                gcloud_cmd_path = sdk_bin_path / "gcloud.cmd" # For Windows
+            else: # Fallback if LOCALAPPDATA is not set, though unlikely
+                gcloud_cmd_path = Path("C:/Users/chris/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin/gcloud.cmd")
+        elif platform.system() == "Linux" or platform.system() == "Darwin": # macOS
+            # Common paths for gcloud on Linux/macOS - this is a guess
+            # User might have installed it elsewhere (e.g. /usr/local/google-cloud-sdk/bin/gcloud)
+            # Or via package managers (snap, apt, brew) which put it in standard PATH locations
+            # This part is less certain without knowing the install method on non-Windows
+            # For now, let's assume if it's not in PATH on Linux/Mac, the user needs to fix PATH
+            # Or we could prompt for the path.
+            # Given the user is on Windows, we focus on the Windows path.
+            pass # No specific fallback path for non-Windows in this quick fix
+
+        if platform.system() == "Windows" and 'gcloud_cmd_path' in locals() and gcloud_cmd_path.exists():
+            print(f"   Trying full path: {gcloud_cmd_path}")
+            gcloud_cmd = str(gcloud_cmd_path)
+            success, output = run_command([gcloud_cmd, "--version"])
+        
     if not success:
         print("❌ Google Cloud SDK (gcloud) is not installed or not in PATH.")
+        print("   Even after attempting a known common path, gcloud was not found or failed.")
         print("\nPlease install the Google Cloud SDK:")
         print("- Visit: https://cloud.google.com/sdk/docs/install")
         print("- Follow the installation instructions for your operating system.")
@@ -82,9 +123,40 @@ def check_gcloud_installation():
         return False
     
     print("✅ Google Cloud SDK is installed.")
-    return True
+    # Store the successfully used command for other functions to use
+    # This is a bit of a hack; a better way would be to pass gcloud_cmd around
+    # or set it as a global/class variable if this script were a class.
+    # For now, we'll modify other calls directly if needed, or assume PATH works after this.
+    # Let's assume if check_gcloud_installation passes, subsequent 'gcloud' calls will use the same mechanism.
+    # The run_command will try 'gcloud' first, which might now work if PATH was the issue for this session.
+    # If not, we might need to pass the full path to other gcloud calls too.
+    # For now, let's assume the PATH issue is intermittent or session-specific and this check helps.
+    # A more robust fix would be to ensure gcloud_cmd (potentially full path) is used everywhere.
+    
+    # To make it more robust, let's modify other gcloud calls to use the determined gcloud_cmd
+    # We'll need to pass this 'gcloud_cmd' to other functions or make it accessible.
+    # For a quick fix, we can just update the calls in other functions if this one succeeds with a full path.
+    # This is getting complex for a quick fix. Let's try a simpler approach first:
+    # If the full path worked, subsequent calls to 'gcloud' in the *same script run* might also need the full path.
+    # The simplest change is to ensure `check_gcloud_installation` returns the command to use.
+    
+    # Let's refine: check_gcloud_installation will return the command string (either 'gcloud' or full path)
+    # And the main function will pass it to other functions. This is cleaner.
+    # This requires more extensive changes to the function signatures.
 
-def setup_gcloud_auth():
+    # Alternative: If the full path works, we can try to add its directory to the PATH for this script's session.
+    if success and gcloud_cmd != "gcloud": # Means full path was used
+        gcloud_dir = str(Path(gcloud_cmd).parent)
+        print(f"   Adding {gcloud_dir} to PATH for this session.")
+        os.environ["PATH"] = gcloud_dir + os.pathsep + os.environ["PATH"]
+        # Now, subsequent calls to "gcloud" in this script *should* find it.
+    
+    if success:
+        return True, gcloud_cmd # Return the command that worked
+    else:
+        return False, None
+
+def setup_gcloud_auth(gcloud_executable):
     """Set up Google Cloud authentication."""
     print_step(4, 6, "Setting up Google Cloud authentication")
     
@@ -93,7 +165,7 @@ def setup_gcloud_auth():
     
     input("Press Enter to continue...")
     
-    success, output = run_command(["gcloud", "auth", "application-default", "login"])
+    success, output = run_command([gcloud_executable, "auth", "application-default", "login"])
     if not success:
         print(f"❌ Failed to set up authentication: {output}")
         return False
@@ -101,7 +173,7 @@ def setup_gcloud_auth():
     print("✅ Google Cloud authentication set up successfully.")
     return True
 
-def configure_project():
+def configure_project(gcloud_executable):
     """Configure the Google Cloud project ID."""
     print_step(5, 6, "Configuring Google Cloud project")
     
@@ -114,7 +186,7 @@ def configure_project():
             return True, project_id
     
     # List available projects
-    success, output = run_command(["gcloud", "projects", "list", "--format=json"])
+    success, output = run_command([gcloud_executable, "projects", "list", "--format=json"])
     if not success:
         print(f"❌ Failed to list projects: {output}")
         project_id = input("Enter your Google Cloud project ID manually: ")
@@ -220,15 +292,16 @@ def main():
         return False
     
     # Check gcloud installation
-    if not check_gcloud_installation():
+    gcloud_ok, gcloud_cmd_to_use = check_gcloud_installation()
+    if not gcloud_ok:
         return False
     
     # Set up authentication
-    if not setup_gcloud_auth():
+    if not setup_gcloud_auth(gcloud_cmd_to_use):
         return False
     
     # Configure project
-    success, project_id = configure_project()
+    success, project_id = configure_project(gcloud_cmd_to_use)
     if not success:
         return False
     
@@ -257,4 +330,3 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n\nAn unexpected error occurred: {str(e)}")
         sys.exit(1)
-
